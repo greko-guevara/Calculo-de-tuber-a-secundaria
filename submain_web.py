@@ -38,20 +38,34 @@ dia = np.array([39.8, 45.9, 57.38, 84.58, 108.72, 160.08,
 # AYUDA TEÓRICA
 # ===============================
 with st.expander("📘 Ayuda teórica"):
-    st.markdown(r"""
-**Ecuación de Hazen–Williams (múltiples salidas):**
+    st.markdown("### 📐 Ecuación de Hazen–Williams (tubería secundaria con múltiples salidas)")
 
-\[
-HF = 1.131 \times 10^9
-\left(\frac{Q}{C}\right)^{1.852}
-L \cdot D^{-4.872} \cdot F
-\]
+    st.latex(r"""
+    H_f =
+    1.131 \times 10^9 \;
+    \left(\frac{Q}{C}\right)^{1.852}
+    \; L \;
+    D^{-4.872}
+    \; F
+    """)
 
-**Criterios**
-- Velocidad ≤ 3 m/s  
-- HF ≤ HF disponible  
-- Reducción progresiva del diámetro
-""")
+    st.markdown("""
+    **Donde:**
+
+    - **H<sub>f</sub>** = pérdida de carga por fricción (m)  
+    - **Q** = caudal (L/s)  
+    - **C** = coeficiente de Hazen–Williams  
+    - **L** = longitud de la tubería (m)  
+    - **D** = diámetro interno (mm)  
+    - **F** = factor de corrección por múltiples salidas  
+
+    ---
+    ### 📋 Criterios de diseño adoptados
+    - Velocidad del flujo ≤ **3 m/s**
+    - Pérdida de carga total ≤ **HF disponible**
+    - **Reducción progresiva del diámetro** en la solución a doble diámetro
+    """)
+
 
 # ===============================
 # CÁLCULOS GENERALES
@@ -181,6 +195,7 @@ if st.button("📥 Generar PDF"):
     e.append(Paragraph(f"Caudal: {Q} m³/h", styles["Normal"]))
     e.append(Paragraph(f"Longitud: {LL} m", styles["Normal"]))
     e.append(Paragraph(f"HF disponible: {HF_disp} m", styles["Normal"]))
+    e.append(Paragraph(f"# salidas: {Salidas} ", styles["Normal"]))
     e.append(Spacer(1, 12))
 
     if d1:
