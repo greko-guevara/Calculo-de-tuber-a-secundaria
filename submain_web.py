@@ -9,6 +9,20 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import cm
 
 # ===============================
+# BASE DE DATOS PVC - SDR
+# ===============================
+PVC_SDR = {
+    "17": [37.18, 42.58, 53.21, 54.45, 78.44, 100.84, 148.46, 193.28],
+    "26": [30.36, 38.9, 44.56, 55.71, 67.45, 82.04, 105.52,
+           155.32, 202.22, 252.07, 298.95],
+    "32.5": [39.0, 45.22, 56.63, 68.55, 83.42, 107.28,
+             157.92, 205.62, 256.23, 303.93],
+    "41": [39.8, 45.9, 57.38, 69.46, 84.58, 108.72,
+           160.08, 208.42, 259.75, 308.05, 369.7]
+}
+
+
+# ===============================
 # CONFIGURACIÓN GENERAL
 # ===============================
 st.set_page_config(
@@ -33,9 +47,23 @@ LL = st.sidebar.number_input("Longitud total (m)", min_value=10.0, value=200.0)
 HF_disp = st.sidebar.number_input("Pérdida disponible (m)", min_value=1.0, value=10.0)
 C = st.sidebar.number_input("Coeficiente Hazen–Williams (C)", value=150)
 
-# Diámetros SDR 41
-dia = np.array([39.8, 45.9, 57.38, 84.58, 108.72,
-                160.08, 208.42, 259.75, 308.05, 369.7])
+# ===============================
+# SELECCIÓN DE MATERIAL PVC
+# ===============================
+st.sidebar.header("🧱 Material de la tubería")
+
+SDR_sel = st.sidebar.selectbox(
+    "Seleccionar SDR del PVC",
+    options=list(PVC_SDR.keys()),
+    index=3  # SDR 41 por defecto
+)
+
+dia = np.array(PVC_SDR[SDR_sel])
+
+st.sidebar.markdown(
+    f"**Diámetros interiores disponibles (mm):**  \n"
+    f"{', '.join([str(d) for d in dia])}"
+)
 
 # ===============================
 # AYUDA TEÓRICA
@@ -61,7 +89,7 @@ with st.expander("📘 Ayuda teórica"):
     - **D** = diámetro interno (mm)
     - **F** = factor por múltiples salidas
 
-    **Criterios FAO adoptados**
+    **Criterios adoptados**
     - Velocidad ≤ 3 m/s
     - HF total ≤ HF disponible
     - Reducción progresiva de diámetro
@@ -97,6 +125,8 @@ for d in dia:
     })
 
 df1 = pd.DataFrame(sol1)
+st.info(f"Material seleccionado: PVC – SDR {SDR_sel}")
+
 st.dataframe(df1, use_container_width=True)
 
 df1_ok = df1[df1["Cumple"]]
@@ -140,6 +170,7 @@ for i in range(1, len(dia)):
             break
     if sol2:
         break
+st.info(f"Material seleccionado: PVC – SDR {SDR_sel}")
 
 if sol2:
     st.success("✅ Solución progresiva encontrada")
@@ -230,7 +261,9 @@ if st.button("📥 Generar PDF"):
         f"Caudal: {Q} m³/h &nbsp;&nbsp;|&nbsp;&nbsp; "
         f"Longitud: {LL} m &nbsp;&nbsp;|&nbsp;&nbsp; "
         f"HF disponible: {HF_disp} m<br/>"
-        f"Número de salidas: {Salidas}",
+        f"Número de salidas: {Salidas}"
+        f"Material: PVC &nbsp;&nbsp;|&nbsp;&nbsp; "
+        f"SDR: {SDR_sel}",
         styles["Normal"]
     ))
 
