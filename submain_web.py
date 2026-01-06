@@ -143,9 +143,24 @@ for i in range(1, len(dia)):
 
 if sol2:
     st.success("✅ Solución progresiva encontrada")
-    st.write(sol2)
-else:
-    st.error("❌ No se encontró solución progresiva.")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("### Tramo inicial")
+        st.metric("Diámetro (mm)", f"{sol2['D1']}")
+        st.metric("Longitud (m)", f"{sol2['L1']}")
+        st.metric("Velocidad (m/s)", f"{sol2['V1']:.2f}")
+
+    with col2:
+        st.markdown("### Tramo final")
+        st.metric("Diámetro (mm)", f"{sol2['D2']}")
+        st.metric("Longitud (m)", f"{sol2['L2']}")
+        st.metric("Velocidad (m/s)", f"{sol2['V2']:.2f}")
+
+    st.markdown("---")
+    st.metric("Pérdida de carga total (m)", f"{sol2['HF']:.2f}")
+
 
 # ===============================
 # GRÁFICO FAO
@@ -182,52 +197,79 @@ fig.savefig("grafico_hf.png", dpi=300)
 # ===============================
 # PDF INSTITUCIONAL
 # ===============================
-st.header("📄 Exportar memoria de cálculo")
+# ===============================
+# PDF ONE PAGE
+# ===============================
+st.header("📄 Exportar memoria de cálculo (1 página)")
 
 if st.button("📥 Generar PDF"):
-    pdf = "Secundaria_de_Riego.pdf"
-    doc = SimpleDocTemplate(pdf, pagesize=letter)
-    styles = getSampleStyleSheet()
+    pdf = "Secundaria_de_Riego_OnePage.pdf"
+    doc = SimpleDocTemplate(
+        pdf,
+        pagesize=letter,
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=36,
+        bottomMargin=36
+    )
 
+    styles = getSampleStyleSheet()
     e = []
 
-    e.append(Spacer(1, 3*cm))
-    e.append(Paragraph("<b>SECUNDARIA DE RIEGO</b>",
-                        ParagraphStyle("t", fontSize=18, alignment=1)))
-    e.append(Spacer(1, 1*cm))
-    e.append(Paragraph("Diseño hidráulico de tuberías secundarias<br/>"
-                       "Método Hazen–Williams",
-                       ParagraphStyle("s", alignment=1)))
-    e.append(Spacer(1, 2*cm))
-    e.append(Paragraph("Universidad EARTH<br/>"
-                       "Riego & Drenaje",
-                       ParagraphStyle("i", alignment=1)))
-    e.append(Spacer(1, 3*cm))
+    # ---- ENCABEZADO ----
+    e.append(Paragraph(
+        "<b>SECUNDARIA DE RIEGO</b><br/>"
+        "Diseño hidráulico de tuberías secundarias – Hazen–Williams<br/>"
+        "Universidad EARTH | Riego & Drenaje<br/><br/>",
+        styles["Title"]
+    ))
 
-    e.append(Paragraph("Datos de entrada", styles["Heading2"]))
-    e.append(Paragraph(f"Caudal: {Q} m³/h", styles["Normal"]))
-    e.append(Paragraph(f"Longitud total: {LL} m", styles["Normal"]))
-    e.append(Paragraph(f"HF disponible: {HF_disp} m", styles["Normal"]))
-    e.append(Paragraph(f"Número de salidas: {Salidas}", styles["Normal"]))
+    # ---- DATOS DE ENTRADA ----
+    e.append(Paragraph("<b>Datos de entrada</b>", styles["Heading3"]))
+    e.append(Paragraph(
+        f"Caudal: {Q} m³/h &nbsp;&nbsp;|&nbsp;&nbsp; "
+        f"Longitud: {LL} m &nbsp;&nbsp;|&nbsp;&nbsp; "
+        f"HF disponible: {HF_disp} m<br/>"
+        f"Número de salidas: {Salidas}",
+        styles["Normal"]
+    ))
 
+    # ---- SOLUCIÓN 1 DIÁMETRO ----
     if d1:
-        e.append(Spacer(1, 12))
-        e.append(Paragraph("Solución con un diámetro", styles["Heading3"]))
-        e.append(Paragraph(f"D = {d1} mm", styles["Normal"]))
-        e.append(Paragraph(f"HF = {round(HF1_sel,2)} m", styles["Normal"]))
+        e.append(Spacer(1, 6))
+        e.append(Paragraph("<b>Solución con un diámetro</b>", styles["Heading3"]))
+        e.append(Paragraph(
+            f"D = {d1} mm &nbsp;&nbsp;|&nbsp;&nbsp; "
+            f"HF = {HF1_sel:.2f} m",
+            styles["Normal"]
+        ))
 
+    # ---- SOLUCIÓN 2 DIÁMETROS ----
     if sol2:
-        e.append(Spacer(1, 12))
-        e.append(Paragraph("Solución con dos diámetros", styles["Heading3"]))
-        e.append(Table([
-            ["Diámetro (mm)", "Longitud (m)", "Velocidad (m/s)"],
-            [sol2["D1"], sol2["L1"], round(sol2["V1"],2)],
-            [sol2["D2"], sol2["L2"], round(sol2["V2"],2)],
-        ]))
+        e.append(Spacer(1, 6))
+        e.append(Paragraph("<b>Solución con dos diámetros progresivos</b>", styles["Heading3"]))
+        e.append(Table(
+            [
+                ["Tramo", "Diámetro (mm)", "Longitud (m)", "Velocidad (m/s)"],
+                ["Inicial", sol2["D1"], sol2["L1"], f"{sol2['V1']:.2f}"],
+                ["Final", sol2["D2"], sol2["L2"], f"{sol2['V2']:.2f}"],
+            ],
+            hAlign="LEFT"
+        ))
+        e.append(Paragraph(
+            f"Pérdida de carga total: <b>{sol2['HF']:.2f} m</b>",
+            styles["Normal"]
+        ))
 
-    e.append(Spacer(1, 12))
-    e.append(Image("grafico_hf.png", width=15*cm, height=9*cm))
+    # ---- GRÁFICO ----
+    e.append(Spacer(1, 8))
+    e.append(Image("grafico_hf.png", width=14*cm, height=7*cm))
 
     doc.build(e)
-    st.success("📄 PDF generado correctamente")
-    st.download_button("⬇️ Descargar PDF", open(pdf, "rb"), file_name=pdf)
+
+    st.success("📄 PDF ONE PAGE generado correctamente")
+    st.download_button(
+        "⬇️ Descargar PDF",
+        open(pdf, "rb"),
+        file_name=pdf
+    )
