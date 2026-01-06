@@ -44,10 +44,10 @@ st.markdown("**Diseño hidráulico de tuberías secundarias**  \n"
 # ENTRADAS
 # ===============================
 st.sidebar.header("🔧 Parámetros de entrada")
-Q = st.sidebar.number_input("Caudal total (m³/h)", 0.1, 20.0)
-S = st.sidebar.number_input("Espaciamiento entre salidas (m)", 0.5, 10.0)
-LL = st.sidebar.number_input("Longitud total (m)", 10.0, 200.0)
-HF_disp = st.sidebar.number_input("Pérdida disponible (m)", 1.0, 10.0)
+Q = st.sidebar.number_input("Caudal total (m³/h)", 0.1, 1000.0)
+S = st.sidebar.number_input("Espaciamiento entre salidas (m)", 0.5, 200)
+LL = st.sidebar.number_input("Longitud total (m)", 1, 2000.0)
+HF_disp = st.sidebar.number_input("Pérdida disponible (m)", 0.5, 100.0)
 C = st.sidebar.number_input("Coeficiente Hazen–Williams (C)", 100, 150)
 
 # ===============================
