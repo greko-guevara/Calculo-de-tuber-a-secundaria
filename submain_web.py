@@ -39,123 +39,131 @@ st.title("💧 Diseño de Tubería Secundaria de Riego")
 st.caption("Diseño hidráulico + tiempo de avance discreto | Prof. Gregory Guevara")
 
 
-with st.expander("📘 Ayuda teórica – Fundamentos hidráulicos"):
-    st.markdown(r"""
-## 1. Flujo en tuberías con múltiples salidas
+with st.expander("📘 Ayuda teórica – Fundamentos hidráulicos", expanded=False):
 
+    st.markdown("## 1. Flujo en tuberías con múltiples salidas")
+
+    st.markdown("""
 En una tubería secundaria de riego, el caudal **no es constante** a lo largo de la conducción.
-Cada salida extrae una fracción del caudal total, por lo que el caudal remanente en el tramo *i* es:
+Cada salida extrae una fracción del caudal total.
+""")
 
-\[
-Q_i = Q - i \cdot q_{\text{salida}}
-\]
+    st.latex(r"Q_i = Q - i \cdot q_{\text{salida}}")
 
+    st.markdown("""
 donde:
-- \(Q\) = caudal total de entrada \([m^3/h]\)
-- \(q_{\text{salida}}\) = caudal por salida
-- \(i\) = número de salidas aguas arriba del tramo
+
+- **Q** = caudal total de entrada (m³/h)  
+- **qₛₐₗᵢdₐ** = caudal por salida  
+- **i** = número de salidas aguas arriba  
 
 Este comportamiento implica que:
 - la velocidad varía con la longitud
 - las pérdidas por fricción deben corregirse
 - el tiempo de avance **no puede calcularse con una sola velocidad promedio**
+""")
 
----
+    st.markdown("---")
 
-## 2. Pérdidas por fricción – Fórmula de Hazen–Williams
+    st.markdown("## 2. Pérdidas por fricción – Fórmula de Hazen–Williams")
 
-Para tuberías a presión, se utiliza la ecuación de Hazen–Williams:
+    st.markdown("Para tuberías a presión se utiliza la ecuación de Hazen–Williams:")
 
-\[
-h_f = 10.67 \cdot \frac{L \cdot Q^{1.852}}{C^{1.852} \cdot D^{4.87}}
-\]
+    st.latex(
+        r"h_f = 10.67 \cdot \frac{L \cdot Q^{1.852}}{C^{1.852} \cdot D^{4.87}}"
+    )
 
-En esta aplicación se utiliza la forma adaptada a:
-- \(Q\) en \(m^3/h\)
-- \(D\) en mm
-- \(L\) en m
+    st.markdown("""
+En esta aplicación se usa la forma adaptada a:
 
-\[
-h_f = 1.131 \times 10^9 \cdot \left(\frac{Q}{C}\right)^{1.852}
-\cdot L \cdot D^{-4.872}
-\]
+- **Q** en m³/h  
+- **D** en mm  
+- **L** en m  
+""")
 
----
+    st.latex(
+        r"h_f = 1.131 \times 10^{9} \cdot \left(\frac{Q}{C}\right)^{1.852} \cdot L \cdot D^{-4.872}"
+    )
 
-## 3. Factor de corrección por múltiples salidas
+    st.markdown("---")
 
-Debido a la disminución progresiva del caudal, se introduce un factor de corrección \(F\):
+    st.markdown("## 3. Factor de corrección por múltiples salidas")
 
-\[
-F = \frac{2n}{2n - 1}
-\left[
-\frac{1}{2.852} + \frac{\sqrt{0.852}}{6n^2}
-\right]
-\]
+    st.markdown("""
+Debido a la disminución progresiva del caudal, se introduce un factor de corrección **F**:
+""")
 
+    st.latex(
+        r"F = \frac{2n}{2n - 1} \left( \frac{1}{2.852} + \frac{\sqrt{0.852}}{6n^2} \right)"
+    )
+
+    st.markdown("""
 donde:
-- \(n\) = número total de salidas
+
+- **n** = número total de salidas  
 
 Este factor permite estimar correctamente la pérdida total por fricción
 en tuberías con extracción distribuida.
+""")
 
----
+    st.markdown("---")
 
-## 4. Velocidad del flujo
+    st.markdown("## 4. Velocidad del flujo")
 
-La velocidad se calcula como:
+    st.latex(r"V = \frac{Q}{A}")
 
-\[
-V = \frac{Q}{A}
-\]
+    st.markdown("donde el área hidráulica es:")
 
-donde el área hidráulica es:
+    st.latex(r"A = \frac{\pi D^2}{4}")
 
-\[
-A = \frac{\pi D^2}{4}
-\]
+    st.markdown("""
+**Criterio usual de diseño**:
+- \( V \leq 3.0\ \text{m/s} \)
+""")
 
-Criterio usual de diseño:
-- \(V \leq 3.0\ m/s\)
+    st.markdown("---")
 
----
+    st.markdown("## 5. Tiempo de avance – Enfoque discreto (criterio correcto)")
 
-## 5. Tiempo de avance – Enfoque discreto (criterio correcto)
-
+    st.markdown("""
 El **tiempo de avance** es el tiempo que tarda el agua en llegar desde la entrada
 hasta el extremo final del sistema.
 
-Dado que el caudal (y la velocidad) varían a lo largo de la tubería,
-el tiempo de avance se calcula **tramo a tramo**:
+Dado que el caudal y la velocidad varían a lo largo de la tubería,
+el cálculo debe hacerse **tramo a tramo**:
+""")
 
-\[
-t_{\text{avance}} = \sum_{i=1}^{n} \frac{\Delta L}{V_i}
-\]
+    st.latex(
+        r"t_{\text{avance}} = \sum_{i=1}^{n} \frac{\Delta L}{V_i}"
+    )
 
+    st.markdown("""
 donde:
-- \(\Delta L\) = longitud entre salidas
-- \(V_i\) = velocidad real en el tramo *i*
+
+- **ΔL** = longitud entre salidas  
+- **Vᵢ** = velocidad real en el tramo *i*  
 
 Este enfoque es fundamental para:
 - fertirriego
 - análisis de uniformidad
 - evaluación del tiempo de respuesta hidráulica
+""")
 
----
+    st.markdown("---")
 
-## 6. Interpretación de los gráficos
+    st.markdown("## 6. Interpretación de los gráficos")
 
+    st.markdown("""
 Los gráficos presentan simultáneamente:
 
-- **Velocidad (línea continua)**  
-- **Tiempo acumulado (puntos)**  
+- **Velocidad** (línea continua)  
+- **Tiempo acumulado** (puntos)  
 
 permitiendo:
 - identificar tramos críticos
 - evaluar el efecto del cambio de diámetro
 - comparar diseños hidráulicos de forma visual y didáctica
 """)
-
 
 
 # ===============================
