@@ -39,51 +39,121 @@ st.title("💧 Diseño de Tubería Secundaria de Riego")
 st.caption("Diseño hidráulico + tiempo de avance discreto | Prof. Gregory Guevara")
 
 
-with st.expander("📘 Ayuda teórica – Criterios hidráulicos"):
-    st.markdown("""
-### 🔹 Flujo con múltiples salidas
+with st.expander("📘 Ayuda teórica – Fundamentos hidráulicos"):
+    st.markdown(r"""
+## 1. Flujo en tuberías con múltiples salidas
 
-En una tubería secundaria de riego, el caudal **no es constante**.
-Cada salida reduce progresivamente el caudal transportado:
+En una tubería secundaria de riego, el caudal **no es constante** a lo largo de la conducción.
+Cada salida extrae una fracción del caudal total, por lo que el caudal remanente en el tramo *i* es:
 
-\\[
-Q_i = Q - i \cdot q_{salida}
-\\]
+\[
+Q_i = Q - i \cdot q_{\text{salida}}
+\]
 
-Por esta razón:
-- la **velocidad disminuye** con la longitud
-- el **tiempo de avance no puede calcularse como L / V promedio**
+donde:
+- \(Q\) = caudal total de entrada \([m^3/h]\)
+- \(q_{\text{salida}}\) = caudal por salida
+- \(i\) = número de salidas aguas arriba del tramo
+
+Este comportamiento implica que:
+- la velocidad varía con la longitud
+- las pérdidas por fricción deben corregirse
+- el tiempo de avance **no puede calcularse con una sola velocidad promedio**
 
 ---
 
-### ⏱️ Tiempo de avance discreto (criterio correcto)
+## 2. Pérdidas por fricción – Fórmula de Hazen–Williams
 
-El tiempo de avance se calcula **tramo a tramo**, considerando:
-- longitud entre salidas
-- caudal real en cada tramo
-- área hidráulica constante por tramo
+Para tuberías a presión, se utiliza la ecuación de Hazen–Williams:
 
-\\[
-t = \\sum_{i=1}^{n} \\frac{\\Delta L}{V_i}
-\\]
+\[
+h_f = 10.67 \cdot \frac{L \cdot Q^{1.852}}{C^{1.852} \cdot D^{4.87}}
+\]
 
-Este enfoque es fundamental en:
+En esta aplicación se utiliza la forma adaptada a:
+- \(Q\) en \(m^3/h\)
+- \(D\) en mm
+- \(L\) en m
+
+\[
+h_f = 1.131 \times 10^9 \cdot \left(\frac{Q}{C}\right)^{1.852}
+\cdot L \cdot D^{-4.872}
+\]
+
+---
+
+## 3. Factor de corrección por múltiples salidas
+
+Debido a la disminución progresiva del caudal, se introduce un factor de corrección \(F\):
+
+\[
+F = \frac{2n}{2n - 1}
+\left[
+\frac{1}{2.852} + \frac{\sqrt{0.852}}{6n^2}
+\right]
+\]
+
+donde:
+- \(n\) = número total de salidas
+
+Este factor permite estimar correctamente la pérdida total por fricción
+en tuberías con extracción distribuida.
+
+---
+
+## 4. Velocidad del flujo
+
+La velocidad se calcula como:
+
+\[
+V = \frac{Q}{A}
+\]
+
+donde el área hidráulica es:
+
+\[
+A = \frac{\pi D^2}{4}
+\]
+
+Criterio usual de diseño:
+- \(V \leq 3.0\ m/s\)
+
+---
+
+## 5. Tiempo de avance – Enfoque discreto (criterio correcto)
+
+El **tiempo de avance** es el tiempo que tarda el agua en llegar desde la entrada
+hasta el extremo final del sistema.
+
+Dado que el caudal (y la velocidad) varían a lo largo de la tubería,
+el tiempo de avance se calcula **tramo a tramo**:
+
+\[
+t_{\text{avance}} = \sum_{i=1}^{n} \frac{\Delta L}{V_i}
+\]
+
+donde:
+- \(\Delta L\) = longitud entre salidas
+- \(V_i\) = velocidad real en el tramo *i*
+
+Este enfoque es fundamental para:
 - fertirriego
-- análisis operativo
-- respuesta hidráulica del sistema
+- análisis de uniformidad
+- evaluación del tiempo de respuesta hidráulica
 
 ---
 
-### 📉 Interpretación de los gráficos
+## 6. Interpretación de los gráficos
 
-Los gráficos combinan:
-- **velocidad** (línea continua)
-- **tiempo acumulado** (puntos)
+Los gráficos presentan simultáneamente:
 
-Esto permite analizar:
-- zonas de baja velocidad
-- retrasos hidráulicos
-- efecto de reducir diámetro en el tramo final
+- **Velocidad (línea continua)**  
+- **Tiempo acumulado (puntos)**  
+
+permitiendo:
+- identificar tramos críticos
+- evaluar el efecto del cambio de diámetro
+- comparar diseños hidráulicos de forma visual y didáctica
 """)
 
 
@@ -278,169 +348,95 @@ fig.savefig("grafico_velocidad_tiempo.png", dpi=300)
 
 
 # ===============================
-# EXPORTAR PDF
+# ONE PAGE – MEMORIA DE CÁLCULO
 # ===============================
-from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
-)
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.enums import TA_CENTER
+from reportlab.platypus import TableStyle
 from reportlab.lib import colors
-from reportlab.lib.units import cm
 
-# ===============================
-# CREACIÓN DEL PDF
-# ===============================
-archivo_pdf = "memoria_hidraulica_manifold.pdf"
-doc = SimpleDocTemplate(
-    archivo_pdf,
-    pagesize=A4,
-    rightMargin=2*cm,
-    leftMargin=2*cm,
-    topMargin=2*cm,
-    bottomMargin=2*cm
-)
 
 styles = getSampleStyleSheet()
-styles["Title"].alignment = TA_CENTER
-styles["Heading2"].spaceAfter = 10
-styles["Normal"].spaceAfter = 8
+story = []
 
-elementos = []
-
-# ===============================
-# PORTADA / TÍTULO
-# ===============================
-elementos.append(Paragraph(
-    "Memoria de Cálculo Hidráulico – Manifold de Riego",
+story.append(Paragraph(
+    "<b>Memoria de Cálculo Hidráulico – Tubería Secundaria de Riego</b>",
     styles["Title"]
 ))
-elementos.append(Paragraph(
-    "Universidad EARTH– Riego & Drenaje",
-    styles["Title"]
-))
-elementos.append(Spacer(1, 12))
-
-elementos.append(Paragraph(
-    "Análisis del tiempo de avance considerando caudal variable "
-    "y reducción progresiva del flujo por salidas múltiples.",
-    styles["Normal"]
-))
-
-elementos.append(Spacer(1, 20))
+story.append(Spacer(1, 8))
 
 # ===============================
-# RESULTADOS GENERALES
+# DATOS DE ENTRADA
 # ===============================
-elementos.append(Paragraph("Resultados hidráulicos", styles["Heading2"]))
+story.append(Paragraph("<b>Datos de entrada</b>", styles["Heading2"]))
 
-tabla_resultados = [
-    ["Escenario", "Tiempo de avance (min)"],
-    ["Un diámetro", f"{t_avance:.2f}"],
-    ["Dos diámetros", f"{t_avance_comb:.2f}"]
-]
+tabla_entrada = Table([
+    ["Parámetro", "Valor"],
+    ["Caudal total Q (m³/h)", f"{Q}"],
+    ["Longitud total L (m)", f"{LL}"],
+    ["Espaciamiento entre salidas (m)", f"{S}"],
+    ["Número de salidas", f"{Salidas}"],
+    ["Pérdida disponible (m)", f"{HF_disp}"],
+    ["Coeficiente Hazen–Williams C", f"{C}"],
+    ["Material", mat_label],
+], colWidths=[7*cm, 6*cm])
 
-tabla = Table(tabla_resultados, colWidths=[8*cm, 4*cm])
-tabla.setStyle(TableStyle([
-    ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+tabla_entrada.setStyle(TableStyle([
+    ("GRID", (0,0), (-1,-1), 0.4, colors.grey),
     ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-    ("ALIGN", (1,1), (-1,-1), "CENTER"),
-    ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
 ]))
 
-elementos.append(tabla)
-elementos.append(Spacer(1, 20))
+story.append(tabla_entrada)
+story.append(Spacer(1, 10))
 
 # ===============================
-# DESCRIPCIÓN METODOLÓGICA
+# RESULTADOS HIDRÁULICOS
 # ===============================
-elementos.append(Paragraph("Metodología de cálculo", styles["Heading2"]))
+story.append(Paragraph("<b>Resultados hidráulicos</b>", styles["Heading2"]))
 
-elementos.append(Paragraph(
-    """
-    El tiempo de avance fue calculado mediante un enfoque discreto,
-    dividiendo la tubería en tramos de longitud constante entre salidas.
-    En cada tramo se consideró el caudal real transportado, permitiendo
-    estimar velocidades y tiempos parciales de forma consistente con
-    el comportamiento hidráulico del sistema.
-    """,
-    styles["Normal"]
-))
+tabla_res = [
+    ["Escenario", "Resultado"],
+    ["Diámetro único recomendado (mm)", f"{d1}"],
+    ["Tiempo de avance – 1 diámetro (min)", f"{t_avance}"],
+]
 
-elementos.append(Spacer(1, 12))
+if sol2:
+    tabla_res += [
+        ["Diámetro inicial (mm)", f"{sol2['D1']}"],
+        ["Diámetro final (mm)", f"{sol2['D2']}"],
+        ["Longitud cambio diámetro (m)", f"{sol2['L1']}"],
+        ["Tiempo de avance – 2 diámetros (min)", f"{t_avance_comb}"],
+    ]
 
-elementos.append(Paragraph(
-    """
-    Para el escenario de dos diámetros, se aplicó una reducción del área
-    hidráulica a partir de una longitud definida, evaluando su impacto
-    sobre la velocidad del flujo y el tiempo total de avance.
-    """,
-    styles["Normal"]
-))
+tabla_resultados = Table(tabla_res, colWidths=[7*cm, 6*cm])
+tabla_resultados.setStyle(TableStyle([
+    ("GRID", (0,0), (-1,-1), 0.4, colors.grey),
+    ("BACKGROUND", (0,0), (-1,0), colors.whitesmoke),
+]))
 
-elementos.append(Spacer(1, 20))
+story.append(tabla_resultados)
+story.append(Spacer(1, 10))
 
 # ===============================
 # GRÁFICO
 # ===============================
-elementos.append(Paragraph("Análisis gráfico", styles["Heading2"]))
-
-elementos.append(Paragraph(
-    """
-    La Figura siguiente presenta la variación de la velocidad y el tiempo
-    acumulado a lo largo del manifold, permitiendo comparar el comportamiento
-    hidráulico entre un diseño de diámetro único y uno con diámetros progresivos.
-    """,
+story.append(Paragraph("<b>Análisis gráfico</b>", styles["Heading2"]))
+story.append(Paragraph(
+    "Variación de la velocidad y tiempo de avance a lo largo del manifold.",
     styles["Normal"]
 ))
+story.append(Spacer(1, 6))
 
-elementos.append(Spacer(1, 10))
-
-img = Image("grafico_velocidad_tiempo.png", width=16*cm, height=6.5*cm)
-elementos.append(img)
-
-elementos.append(Spacer(1, 20))
+story.append(Image("grafico_velocidad_tiempo.png", width=16*cm, height=6*cm))
 
 # ===============================
-# TABLA RESUMEN POR TRAMOS (primeros 10)
+# CONSTRUCCIÓN PDF
 # ===============================
-elementos.append(Paragraph(
-    "Resumen hidráulico por tramos (primeros tramos)",
-    styles["Heading2"]
-))
+doc = SimpleDocTemplate(
+    "memoria_calculo_secundaria.pdf",
+    pagesize=letter,
+    rightMargin=1.5*cm,
+    leftMargin=1.5*cm,
+    topMargin=1.5*cm,
+    bottomMargin=1.5*cm
+)
 
-tabla_tramos = [
-    [
-        "Tramo",
-        "Long. acum (m)",
-        "Q (m³/h)",
-        "V (m/s)",
-        "t acum (min)"
-    ]
-]
-
-for i, row in df_t.head(10).iterrows():
-    tabla_tramos.append([
-        int(i),
-        f"{row['long_acum']:.1f}",
-        f"{row['q_tramo']:.2f}",
-        f"{row['v_tramo']:.3f}",
-        f"{row['t_acum']:.2f}"
-    ])
-
-tabla2 = Table(tabla_tramos, repeatRows=1)
-tabla2.setStyle(TableStyle([
-    ("GRID", (0,0), (-1,-1), 0.25, colors.grey),
-    ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
-    ("ALIGN", (1,1), (-1,-1), "CENTER"),
-    ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-    ("FONTSIZE", (0,0), (-1,-1), 8),
-]))
-
-elementos.append(tabla2)
-
-# ===============================
-# CONSTRUCCIÓN FINAL
-# ===============================
-doc.build(elementos)
+doc.build(story)
