@@ -254,7 +254,25 @@ for i in range(1, len(dia)):
 
 if sol2:
     st.success("Solución progresiva encontrada")
-    st.write(sol2)
+    df_sol2 = pd.DataFrame({
+        "Tramo": ["Inicial", "Final"],
+        "Diámetro (mm)": [sol2["D1"], sol2["D2"]],
+        "Longitud (m)": [sol2["L1"], sol2["L2"]],
+        "Velocidad (m/s)": [sol2["V1"], sol2["V2"]],
+    })
+
+    st.dataframe(
+        df_sol2.style
+        .format({
+            "Diámetro (mm)": "{:.1f}",
+            "Longitud (m)": "{:.0f}",
+            "Velocidad (m/s)": "{:.2f}",
+        }),
+        use_container_width=True
+    )
+
+    st.metric("Pérdida de carga total (m)", f"{sol2['HF']:.3f}")
+
 
 # ===============================
 # TIEMPO DE AVANCE (ALGORITMO DISCRETO)
@@ -430,13 +448,83 @@ story.append(Image("grafico_velocidad_tiempo.png", width=16*cm, height=6*cm))
 # ===============================
 # CONSTRUCCIÓN PDF
 # ===============================
-doc = SimpleDocTemplate(
-    "memoria_calculo_secundaria.pdf",
-    pagesize=letter,
-    rightMargin=1.5*cm,
-    leftMargin=1.5*cm,
-    topMargin=1.5*cm,
-    bottomMargin=1.5*cm
-)
+if st.button("📄 Generar memoria de cálculo (PDF)"):
+    # 1. Crear PDF
+    pdf_file = "Memoria_Secundaria_Riego.pdf"
 
-doc.build(story)
+    doc = SimpleDocTemplate(
+        pdf_file,
+        pagesize=letter,
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=36,
+        bottomMargin=36
+    )
+
+    styles = getSampleStyleSheet()
+    elements = []
+
+    # ----- CONTENIDO DEL PDF -----
+    elements.append(Paragraph(
+        "<b>MEMORIA DE CÁLCULO – TUBERÍA SECUNDARIA DE RIEGO</b>",
+        styles["Title"]
+    ))
+
+    elements.append(Spacer(1, 12))
+
+    elements.append(Paragraph(
+        f"""
+        <b>Datos de entrada</b><br/>
+        Caudal total: {Q:.2f} m³/h<br/>
+        Longitud total: {LL:.1f} m<br/>
+        Espaciamiento entre salidas: {S:.1f} m<br/>
+        Número de salidas: {Salidas}<br/>
+        Coeficiente Hazen–Williams (C): {C}<br/>
+        Pérdida disponible: {HF_disp:.2f} m<br/>
+        Material: {mat_label}
+        """,
+        styles["Normal"]
+    ))
+
+    elements.append(Spacer(1, 10))
+
+    if d1:
+        elements.append(Paragraph("<b>Solución con un diámetro</b>", styles["Heading3"]))
+        elements.append(Paragraph(
+            f"Diámetro seleccionado: {d1:.1f} mm<br/>"
+            f"Tiempo de avance: {t_avance:.2f} min",
+            styles["Normal"]
+        ))
+
+    if sol2:
+        elements.append(Spacer(1, 8))
+        elements.append(Paragraph("<b>Solución con dos diámetros</b>", styles["Heading3"]))
+
+        tabla = Table([
+            ["Tramo", "Diámetro (mm)", "Longitud (m)", "Velocidad (m/s)"],
+            ["Inicial", sol2["D1"], sol2["L1"], f"{sol2['V1']:.2f}"],
+            ["Final", sol2["D2"], sol2["L2"], f"{sol2['V2']:.2f}"],
+        ])
+
+        elements.append(tabla)
+
+        elements.append(Paragraph(
+            f"Pérdida total de carga: {sol2['HF']:.3f} m<br/>"
+            f"Tiempo de avance total: {t_avance_comb:.2f} min",
+            styles["Normal"]
+        ))
+
+    elements.append(Spacer(1, 12))
+    elements.append(Image("grafico_velocidad_tiempo.png", width=16*cm, height=6*cm))
+
+    # 2. Construir PDF
+    doc.build(elements)
+
+    # 3. Botón de descarga
+    with open(pdf_file, "rb") as f:
+        st.download_button(
+            label="⬇️ Descargar PDF",
+            data=f,
+            file_name=pdf_file,
+            mime="application/pdf"
+        )
