@@ -44,11 +44,11 @@ st.markdown("**Diseño hidráulico de tuberías secundarias**  \n"
 # ENTRADAS
 # ===============================
 st.sidebar.header("🔧 Parámetros de entrada")
-Q = st.sidebar.number_input("Caudal total (m³/h)", 0.1, 1000.0)
-S = st.sidebar.number_input("Espaciamiento entre salidas (m)", 0.5, 200.0)
-LL = st.sidebar.number_input("Longitud total (m)", 1.0, 2000.0)
-HF_disp = st.sidebar.number_input("Pérdida disponible (m)", 0.5, 100.0)
-C = st.sidebar.number_input("Coeficiente Hazen–Williams (C)", 100, 150)
+Q = st.sidebar.number_input("Caudal total (m³/h)", 100.0)
+S = st.sidebar.number_input("Espaciamiento entre salidas (m)", 10.0)
+LL = st.sidebar.number_input("Longitud total (m)", 100.0)
+HF_disp = st.sidebar.number_input("Pérdida disponible (m)", 1.0)
+C = st.sidebar.number_input("Coeficiente Hazen–Williams (C)", 150)
 
 # ===============================
 # SELECCIÓN DE MATERIAL Y SDR/PN
@@ -87,6 +87,39 @@ with st.expander("📘 Ayuda teórica"):
 - Velocidad ≤ 3 m/s  
 - HF total ≤ HF disponible  
 - Reducción progresiva de diámetro
+### ⏱️ Tiempo de avance del agua
+
+El tiempo de avance representa el tiempo requerido para que el agua recorra la tubería desde el inicio hasta el último punto.
+**Un solo diámetro:**
+\[
+t = \frac{L}{V}
+\]
+
+**Dos diámetros progresivos:**
+\[
+t = \frac{L_1}{V_1} + \frac{L_2}{V_2}
+\]
+
+Este criterio es clave para:
+- Diseño operativo Fertirriego
+- Evaluación de respuesta hidráulica
+- Comparación de alternativas de diseño
+                
+### 📉 Velocidad del agua a lo largo de la tubería
+
+En tuberías con múltiples salidas, el caudal disminuye progresivamente,
+por lo que la velocidad también varía con la longitud.
+
+\[
+V(x) = \frac{Q(x)}{A}
+\]
+
+Este gráfico permite:
+- Ver la reducción de velocidad hacia el extremo
+- Comparar diámetro único vs. diseño progresivo
+- Verificar criterios de autolimpieza y velocidad máxima
+
+
 """)
 
 # ===============================
@@ -115,6 +148,12 @@ if not df1_ok.empty:
 else:
     st.warning("⚠️ No hay solución con un solo diámetro.")
 st.dataframe(df1, use_container_width=True)
+if d1:
+    A1 = np.pi * (d1 / 2000)**2
+    V1 = Q / A1 / 3600
+    t1 = LL / V1              # segundos
+    t1_min = t1 / 60
+    st.metric("⏱️ Tiempo de avance (min)", f"{t1_min:.2f}")
 
 # --- Solución 2 diámetros ---
 st.header("🔹 Solución con dos diámetros progresivos")
@@ -147,6 +186,35 @@ if sol2:
         st.metric("L (m)", sol2["L2"])
         st.metric("V (m/s)", f"{sol2['V2']:.2f}")
     st.metric("HF total (m)", f"{sol2['HF']:.2f}")
+if sol2:
+    t2 = sol2["L1"]/sol2["V1"] + sol2["L2"]/sol2["V2"]
+    t2_min = t2 / 60
+    st.metric("⏱️ Tiempo total de avance (min)", f"{t2_min:.2f}")
+
+
+x = np.linspace(0, LL, 100)
+
+# --- Velocidad para 1 diámetro ---
+V1_x = None
+if d1:
+    A1 = np.pi * (d1 / 2000)**2
+    Qx = Q * (1 - x / LL)
+    V1_x = Qx / A1 / 3600
+
+# --- Velocidad para 2 diámetros ---
+V2_x = None
+if sol2:
+    V2_x = []
+    for xi in x:
+        if xi <= sol2["L1"]:
+            A = np.pi * (sol2["D1"] / 2000)**2
+            Qi = Q * (1 - xi / LL)
+        else:
+            A = np.pi * (sol2["D2"] / 2000)**2
+            Qi = Q * (1 - xi / LL)
+        V2_x.append(Qi / A / 3600)
+    V2_x = np.array(V2_x)
+
 
 # ===============================
 # GRÁFICO
@@ -166,6 +234,29 @@ ax.grid(True, linestyle=":", alpha=0.7)
 ax.legend()
 st.pyplot(fig)
 fig.savefig("grafico_hf.png", dpi=300)
+
+st.header("📉 Velocidad del agua a lo largo de la tubería")
+
+fig_v, ax_v = plt.subplots(figsize=(8,5))
+
+if V1_x is not None:
+    ax_v.plot(x, V1_x, label="1 diámetro", linewidth=2)
+
+if V2_x is not None:
+    ax_v.plot(x, V2_x, label="2 diámetros progresivos", linestyle="--", linewidth=2)
+
+ax_v.axhline(3, linestyle=":", linewidth=1, label="V máx recomendada (3 m/s)")
+ax_v.axhline(0.6, linestyle=":", linewidth=1, label="V mín autolimpieza (0.6 m/s)")
+
+ax_v.set_xlabel("Longitud acumulada (m)")
+ax_v.set_ylabel("Velocidad (m/s)")
+ax_v.set_title("Distribución de velocidades en la tubería secundaria")
+ax_v.grid(True, linestyle=":", alpha=0.7)
+ax_v.legend()
+
+st.pyplot(fig_v)
+fig_v.savefig("grafico_velocidad.png", dpi=300)
+
 
 # ===============================
 # PDF ONE PAGE
@@ -190,6 +281,8 @@ if st.button("📥 Generar PDF"):
     if d1:
         e.append(Paragraph("<b>Solución con un diámetro</b>", styles["Heading3"]))
         e.append(Paragraph(f"D = {d1} mm | HF = {HF1_sel:.2f} m", styles["Normal"]))
+        e.append(Paragraph(f"Tiempo de avance = {t1_min:.2f} minutos",styles["Normal"]))
+
     # --- Solución 2 diámetros
     if sol2:
         e.append(Paragraph("<b>Solución con dos diámetros progresivos</b>", styles["Heading3"]))
@@ -199,9 +292,16 @@ if st.button("📥 Generar PDF"):
             ["Final", sol2["D2"], sol2["L2"], f"{sol2['V2']:.2f}"],
         ], hAlign="LEFT"))
         e.append(Paragraph(f"HF total = {sol2['HF']:.2f} m", styles["Normal"]))
+        e.append(Paragraph(f"Tiempo total de avance = {t2_min:.2f} minutos",styles["Normal"]))
+
     # --- Gráfico
     e.append(Spacer(1,8))
     e.append(Image("grafico_hf.png", width=14*cm, height=7*cm))
     doc.build(e)
     st.success("📄 PDF ONE PAGE generado correctamente")
     st.download_button("⬇️ Descargar PDF", open(pdf,"rb"), file_name=pdf)
+
+    e.append(Spacer(1,8))
+    e.append(Paragraph("<b>Distribución de velocidades</b>", styles["Heading3"]))
+    e.append(Image("grafico_velocidad.png", width=14*cm, height=7*cm))
+
