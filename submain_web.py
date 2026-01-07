@@ -29,12 +29,64 @@ PE_PN = {
              90.0, 102.2, 114.6, 130.8, 147.2, 163.6]
 }
 
+
+
 # ===============================
 # CONFIGURACIÓN GENERAL
 # ===============================
 st.set_page_config(page_title="Secundaria de Riego", layout="wide")
 st.title("💧 Diseño de Tubería Secundaria de Riego")
 st.caption("Diseño hidráulico + tiempo de avance discreto | Prof. Gregory Guevara")
+
+
+with st.expander("📘 Ayuda teórica – Criterios hidráulicos"):
+    st.markdown("""
+### 🔹 Flujo con múltiples salidas
+
+En una tubería secundaria de riego, el caudal **no es constante**.
+Cada salida reduce progresivamente el caudal transportado:
+
+\\[
+Q_i = Q - i \cdot q_{salida}
+\\]
+
+Por esta razón:
+- la **velocidad disminuye** con la longitud
+- el **tiempo de avance no puede calcularse como L / V promedio**
+
+---
+
+### ⏱️ Tiempo de avance discreto (criterio correcto)
+
+El tiempo de avance se calcula **tramo a tramo**, considerando:
+- longitud entre salidas
+- caudal real en cada tramo
+- área hidráulica constante por tramo
+
+\\[
+t = \\sum_{i=1}^{n} \\frac{\\Delta L}{V_i}
+\\]
+
+Este enfoque es fundamental en:
+- fertirriego
+- análisis operativo
+- respuesta hidráulica del sistema
+
+---
+
+### 📉 Interpretación de los gráficos
+
+Los gráficos combinan:
+- **velocidad** (línea continua)
+- **tiempo acumulado** (puntos)
+
+Esto permite analizar:
+- zonas de baja velocidad
+- retrasos hidráulicos
+- efecto de reducir diámetro en el tramo final
+""")
+
+
 
 # ===============================
 # ENTRADAS
@@ -184,46 +236,211 @@ st.dataframe(df_t, use_container_width=True)
 # ===============================
 # GRÁFICO VELOCIDAD VS LONGITUD
 # ===============================
-st.header("📉 Velocidad vs Longitud")
+st.header("📊 Análisis hidráulico: velocidad y tiempo de avance")
 
-fig, ax = plt.subplots(figsize=(8,4))
-ax.plot(df_t["long_acum"], df_t["v_tramo"], label="1 diámetro")
+fig, axes = plt.subplots(1, 2, figsize=(16,5), sharex=True)
 
-if sol2:
-    ax.plot(df_t["long_acum"], df_t["v_tramo_comb"], "--", label="2 diámetros")
+# ===============================
+# SUBPLOT 1 – UN DIÁMETRO
+# ===============================
+ax1 = axes[0]
+ax1.set_title("Un diámetro")
+ax1.set_xlabel("Longitud acumulada (m)")
+ax1.set_ylabel("Velocidad (m/s)", color="tab:red")
+ax1.plot(df_t["long_acum"], df_t["v_tramo"], color="tab:red", linewidth=2)
+ax1.tick_params(axis='y', labelcolor="tab:red")
+ax1.grid(True, linestyle=":", alpha=0.6)
 
-ax.axhline(3, linestyle=":", label="V máx")
-ax.axhline(0.6, linestyle=":", label="V mín")
-ax.set_xlabel("Longitud acumulada (m)")
-ax.set_ylabel("Velocidad (m/s)")
-ax.grid(True)
-ax.legend()
+ax1b = ax1.twinx()
+ax1b.set_ylabel("Tiempo acumulado (min)", color="tab:blue")
+ax1b.scatter(df_t["long_acum"], df_t["t_acum"], color="tab:blue", s=25)
+ax1b.tick_params(axis='y', labelcolor="tab:blue")
 
+# ===============================
+# SUBPLOT 2 – DOS DIÁMETROS
+# ===============================
+ax2 = axes[1]
+ax2.set_title("Dos diámetros progresivos")
+ax2.set_xlabel("Longitud acumulada (m)")
+ax2.set_ylabel("Velocidad (m/s)", color="tab:red")
+ax2.plot(df_t["long_acum"], df_t["v_tramo_comb"], color="tab:red", linewidth=2)
+ax2.tick_params(axis='y', labelcolor="tab:red")
+ax2.grid(True, linestyle=":", alpha=0.6)
+
+ax2b = ax2.twinx()
+ax2b.set_ylabel("Tiempo acumulado (min)", color="tab:blue")
+ax2b.scatter(df_t["long_acum"], df_t["t_acum_comb"], color="tab:blue", s=25)
+ax2b.tick_params(axis='y', labelcolor="tab:blue")
+
+fig.tight_layout()
 st.pyplot(fig)
-fig.savefig("grafico_velocidad.png", dpi=300)
+fig.savefig("grafico_velocidad_tiempo.png", dpi=300)
+
 
 # ===============================
 # EXPORTAR PDF
 # ===============================
-st.header("📄 Exportar memoria de cálculo")
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+)
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib import colors
+from reportlab.lib.units import cm
 
-if st.button("Generar PDF"):
-    pdf = "Secundaria_Riego.pdf"
-    doc = SimpleDocTemplate(pdf, pagesize=letter)
-    styles = getSampleStyleSheet()
-    e = []
+# ===============================
+# CREACIÓN DEL PDF
+# ===============================
+archivo_pdf = "memoria_hidraulica_manifold.pdf"
+doc = SimpleDocTemplate(
+    archivo_pdf,
+    pagesize=A4,
+    rightMargin=2*cm,
+    leftMargin=2*cm,
+    topMargin=2*cm,
+    bottomMargin=2*cm
+)
 
-    e.append(Paragraph("<b>SECUNDARIA DE RIEGO</b>", styles["Title"]))
-    e.append(Paragraph(f"Material: {mat_label}", styles["Normal"]))
-    e.append(Paragraph(f"Caudal = {Q} m³/h | Longitud = {LL} m", styles["Normal"]))
-    e.append(Paragraph(f"Tiempo de avance = {t_avance} min", styles["Normal"]))
+styles = getSampleStyleSheet()
+styles["Title"].alignment = TA_CENTER
+styles["Heading2"].spaceAfter = 10
+styles["Normal"].spaceAfter = 8
 
-    if sol2:
-        e.append(Paragraph(f"Tiempo avance combinado = {t_avance_comb} min", styles["Normal"]))
+elementos = []
 
-    e.append(Spacer(1,10))
-    e.append(Image("grafico_velocidad.png", width=14*cm, height=7*cm))
+# ===============================
+# PORTADA / TÍTULO
+# ===============================
+elementos.append(Paragraph(
+    "Memoria de Cálculo Hidráulico – Manifold de Riego",
+    styles["Title"]
+))
+elementos.append(Paragraph(
+    "Universidad EARTH– Riego & Drenaje",
+    styles["Title"]
+))
+elementos.append(Spacer(1, 12))
 
-    doc.build(e)
-    st.success("PDF generado correctamente")
-    st.download_button("Descargar PDF", open(pdf,"rb"), file_name=pdf)
+elementos.append(Paragraph(
+    "Análisis del tiempo de avance considerando caudal variable "
+    "y reducción progresiva del flujo por salidas múltiples.",
+    styles["Normal"]
+))
+
+elementos.append(Spacer(1, 20))
+
+# ===============================
+# RESULTADOS GENERALES
+# ===============================
+elementos.append(Paragraph("Resultados hidráulicos", styles["Heading2"]))
+
+tabla_resultados = [
+    ["Escenario", "Tiempo de avance (min)"],
+    ["Un diámetro", f"{t_avance:.2f}"],
+    ["Dos diámetros", f"{t_avance_comb:.2f}"]
+]
+
+tabla = Table(tabla_resultados, colWidths=[8*cm, 4*cm])
+tabla.setStyle(TableStyle([
+    ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+    ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+    ("ALIGN", (1,1), (-1,-1), "CENTER"),
+    ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+]))
+
+elementos.append(tabla)
+elementos.append(Spacer(1, 20))
+
+# ===============================
+# DESCRIPCIÓN METODOLÓGICA
+# ===============================
+elementos.append(Paragraph("Metodología de cálculo", styles["Heading2"]))
+
+elementos.append(Paragraph(
+    """
+    El tiempo de avance fue calculado mediante un enfoque discreto,
+    dividiendo la tubería en tramos de longitud constante entre salidas.
+    En cada tramo se consideró el caudal real transportado, permitiendo
+    estimar velocidades y tiempos parciales de forma consistente con
+    el comportamiento hidráulico del sistema.
+    """,
+    styles["Normal"]
+))
+
+elementos.append(Spacer(1, 12))
+
+elementos.append(Paragraph(
+    """
+    Para el escenario de dos diámetros, se aplicó una reducción del área
+    hidráulica a partir de una longitud definida, evaluando su impacto
+    sobre la velocidad del flujo y el tiempo total de avance.
+    """,
+    styles["Normal"]
+))
+
+elementos.append(Spacer(1, 20))
+
+# ===============================
+# GRÁFICO
+# ===============================
+elementos.append(Paragraph("Análisis gráfico", styles["Heading2"]))
+
+elementos.append(Paragraph(
+    """
+    La Figura siguiente presenta la variación de la velocidad y el tiempo
+    acumulado a lo largo del manifold, permitiendo comparar el comportamiento
+    hidráulico entre un diseño de diámetro único y uno con diámetros progresivos.
+    """,
+    styles["Normal"]
+))
+
+elementos.append(Spacer(1, 10))
+
+img = Image("grafico_velocidad_tiempo.png", width=16*cm, height=6.5*cm)
+elementos.append(img)
+
+elementos.append(Spacer(1, 20))
+
+# ===============================
+# TABLA RESUMEN POR TRAMOS (primeros 10)
+# ===============================
+elementos.append(Paragraph(
+    "Resumen hidráulico por tramos (primeros tramos)",
+    styles["Heading2"]
+))
+
+tabla_tramos = [
+    [
+        "Tramo",
+        "Long. acum (m)",
+        "Q (m³/h)",
+        "V (m/s)",
+        "t acum (min)"
+    ]
+]
+
+for i, row in df_t.head(10).iterrows():
+    tabla_tramos.append([
+        int(i),
+        f"{row['long_acum']:.1f}",
+        f"{row['q_tramo']:.2f}",
+        f"{row['v_tramo']:.3f}",
+        f"{row['t_acum']:.2f}"
+    ])
+
+tabla2 = Table(tabla_tramos, repeatRows=1)
+tabla2.setStyle(TableStyle([
+    ("GRID", (0,0), (-1,-1), 0.25, colors.grey),
+    ("BACKGROUND", (0,0), (-1,0), colors.lightgrey),
+    ("ALIGN", (1,1), (-1,-1), "CENTER"),
+    ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+    ("FONTSIZE", (0,0), (-1,-1), 8),
+]))
+
+elementos.append(tabla2)
+
+# ===============================
+# CONSTRUCCIÓN FINAL
+# ===============================
+doc.build(elementos)
